@@ -10,7 +10,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { apiFetch } from "../utils/restFetch.js";
+import { createIssue, fetchIssue, updateIssue } from "../api/issues.js";
 import {
   daysFromNow,
   formatDateForDisplay,
@@ -44,34 +44,43 @@ function IssueEdit({ showSuccess, showError }) {
   const [showingValidation, setShowingValidation] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  function loadData() {
-    setLoading(true);
-    if (isCreateMode) {
-      setIssue({
-        status: "New",
-        owner: "",
-        effort: null,
-        due: daysFromNow(10),
-        title: "",
-        description: "",
-        created: new Date(),
-      });
-      setInvalidFields({});
-      setLoading(false);
-      return;
-    }
-    apiFetch(`/issues/${routeId}`, { method: "GET" }, showError).then(
-      (data) => {
-        setIssue(data ? normalizeIssue(data.issue) : {});
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
+      await Promise.resolve();
+      if (ignore) return;
+
+      setLoading(true);
+      if (isCreateMode) {
+        setIssue({
+          status: "New",
+          owner: "",
+          effort: null,
+          due: daysFromNow(10),
+          title: "",
+          description: "",
+          created: new Date(),
+        });
         setInvalidFields({});
         setLoading(false);
-      },
-    );
-  }
+        return;
+      }
 
-  useEffect(() => {
+      const data = await fetchIssue(routeId, showError);
+      if (ignore) return;
+
+      setIssue(data ? normalizeIssue(data.issue) : {});
+      setInvalidFields({});
+      setLoading(false);
+    }
+
     loadData();
-  }, [routeId]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [isCreateMode, routeId, showError]);
 
   function onChange(event, naturalValue) {
     const { name, value } = event.target;
@@ -115,14 +124,7 @@ function IssueEdit({ showSuccess, showError }) {
         due: issue.due,
         description: issue.description,
       };
-      apiFetch(
-        "/issues",
-        {
-          method: "POST",
-          body: JSON.stringify({ issue: createPayload }),
-        },
-        showError,
-      ).then((data) => {
+      createIssue(createPayload, showError).then((data) => {
         if (data?.issueAdd?.id) {
           showSuccess("Created issue successfully");
           navigate(`/edit/${data.issueAdd.id}`);
@@ -132,14 +134,7 @@ function IssueEdit({ showSuccess, showError }) {
     }
 
     const id = issue.id;
-    apiFetch(
-      `/issues/${id}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ changes }),
-      },
-      showError,
-    ).then((data) => {
+    updateIssue(id, changes, showError).then((data) => {
       if (data) {
         setIssue(normalizeIssue(data.issueUpdate));
         showSuccess("Updated issue successfully");
@@ -201,18 +196,21 @@ function IssueEdit({ showSuccess, showError }) {
           <MenuItem value="Closed">Closed</MenuItem>
         </TextField>
         <TextInput
+          key={`owner:${issue.id || "new"}:${issue.owner || ""}`}
           label="Owner"
           name="owner"
           value={issue.owner}
           onChange={onChange}
         />
         <NumInput
+          key={`effort:${issue.id || "new"}:${issue.effort ?? ""}`}
           label="Effort in days"
           name="effort"
           value={issue.effort}
           onChange={onChange}
         />
         <DateInput
+          key={`due:${issue.id || "new"}:${issue.due || ""}`}
           label="Due"
           name="due"
           value={issue.due}
@@ -220,12 +218,14 @@ function IssueEdit({ showSuccess, showError }) {
           onValidityChange={onValidityChange}
         />
         <TextInput
+          key={`title:${issue.id || "new"}:${issue.title || ""}`}
           label="Title"
           name="title"
           value={issue.title}
           onChange={onChange}
         />
         <TextInput
+          key={`description:${issue.id || "new"}:${issue.description || ""}`}
           label="Description"
           multiline
           rows={8}

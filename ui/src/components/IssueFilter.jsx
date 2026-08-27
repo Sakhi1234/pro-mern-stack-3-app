@@ -1,35 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Box, Button, MenuItem, TextField } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function IssueFilter({ urlBase }) {
   const location = useLocation();
+  return <IssueFilterContent key={location.search} urlBase={urlBase} location={location} />;
+}
+
+function IssueFilterContent({ urlBase, location }) {
   const navigate = useNavigate();
-  const [status, setStatus] = useState('');
-  const [effortMin, setEffortMin] = useState('');
-  const [effortMax, setEffortMax] = useState('');
+  const currentSearchParams = new URLSearchParams(location.search);
+  const [status, setStatus] = useState(currentSearchParams.get('status') || '');
+  const [effortMin, setEffortMin] = useState(currentSearchParams.get('effortMin') || '');
+  const [effortMax, setEffortMax] = useState(currentSearchParams.get('effortMax') || '');
   const [changed, setChanged] = useState(false);
 
   const hasActiveFilters = Boolean(status || effortMin || effortMax);
 
-  function syncFromSearch() {
-    const params = new URLSearchParams(location.search);
-    setStatus(params.get('status') || '');
-    setEffortMin(params.get('effortMin') || '');
-    setEffortMax(params.get('effortMax') || '');
-    setChanged(false);
-  }
-
-  useEffect(() => {
-    syncFromSearch();
-  }, [location.search]);
-
   function applyFilter() {
-    const params = new URLSearchParams();
-    if (status) params.set('status', status);
-    if (effortMin) params.set('effortMin', effortMin);
-    if (effortMax) params.set('effortMax', effortMax);
-    const search = params.toString() ? `?${params.toString()}` : '';
+    const nextSearchParams = new URLSearchParams();
+    if (status) nextSearchParams.set('status', status);
+    if (effortMin) nextSearchParams.set('effortMin', effortMin);
+    if (effortMax) nextSearchParams.set('effortMax', effortMax);
+    const search = nextSearchParams.toString() ? `?${nextSearchParams.toString()}` : '';
     navigate({ pathname: urlBase, search });
   }
 

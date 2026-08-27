@@ -7,14 +7,14 @@ import IssueAddNavItem from '../components/IssueAddNavItem.jsx';
 import SignInNavItem from '../components/SignInNavItem.jsx';
 import Search from '../components/Search.jsx';
 import UserContext from '../context/UserContext.js';
-import { apiFetch } from '../utils/restFetch.js';
+import { fetchCurrentUser } from '../api/auth.js';
 
 export default function Page() {
   const [user, setUser] = useState(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   useEffect(() => {
-    apiFetch('/user')
+    fetchCurrentUser()
       .then((data) => {
         setUser(
           data?.user || {

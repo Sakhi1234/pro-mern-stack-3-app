@@ -1,8 +1,7 @@
 const express = require('express');
 const passport = require('passport');
-const { Strategy: LocalStrategy } = require('passport-local');
+const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const jwt = require('jsonwebtoken');
-const { randomBytes, pbkdf2Sync, timingSafeEqual } = require('crypto');
 const { getDb } = require('./db.js');
 const { AppError } = require('./errors.js');
 
@@ -17,15 +16,20 @@ if (!JWT_SECRET) {
   }
 }
 
+const {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_CALLBACK_URL = 'http://localhost:3000/auth/google/callback',
+  UI_SERVER_ORIGIN = 'http://localhost:9000',
+  AUTH_SUCCESS_REDIRECT = UI_SERVER_ORIGIN,
+  AUTH_FAILURE_REDIRECT = `${UI_SERVER_ORIGIN}/?auth=failed`,
+} = process.env;
+
 const routes = express.Router();
 routes.use(express.json());
 
 function normalizeEmail(email) {
   return (email || '').trim().toLowerCase();
-}
-
-function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 }
 
 function deriveGivenName(name) {
@@ -43,24 +47,14 @@ function buildUserPayload(userDoc) {
   };
 }
 
-function makePasswordRecord(password, salt = randomBytes(16).toString('hex')) {
-  const hash = pbkdf2Sync(password, salt, 120000, 64, 'sha512').toString('hex');
-  return { salt, hash };
-}
-
-function verifyPassword(password, passwordRecord) {
-  if (!passwordRecord?.salt || !passwordRecord?.hash) return false;
-
-  const candidate = makePasswordRecord(password, passwordRecord.salt).hash;
-  const stored = Buffer.from(passwordRecord.hash, 'hex');
-  const attempted = Buffer.from(candidate, 'hex');
-  if (stored.length !== attempted.length) return false;
-  return timingSafeEqual(stored, attempted);
-}
-
-async function findUserByEmail(email) {
-  const db = getDb();
-  return db.collection('users').findOne({ email: normalizeEmail(email) });
+function cookieOptions() {
+  const options = {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  };
+  if (process.env.COOKIE_DOMAIN) options.domain = process.env.COOKIE_DOMAIN;
+  return options;
 }
 
 function getUser(req) {
@@ -76,126 +70,140 @@ function getUser(req) {
 
 function signUserIn(res, user) {
   const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
-  const cookieConfig = {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-  };
-  if (process.env.COOKIE_DOMAIN) cookieConfig.domain = process.env.COOKIE_DOMAIN;
-  res.cookie('jwt', token, cookieConfig);
+  res.cookie('jwt', token, cookieOptions());
 }
 
-passport.use(new LocalStrategy(
-  {
-    usernameField: 'email',
-    passwordField: 'password',
-    session: false,
-  },
-  (email, password, done) => {
-    const normalizedEmail = normalizeEmail(email);
-    if (!normalizedEmail || !password) {
-      done(null, false, { message: 'Email and password are required' });
-      return;
-    }
+function getGoogleEmail(profile) {
+  return normalizeEmail(profile.emails?.find((email) => email.value)?.value);
+}
 
-    findUserByEmail(normalizedEmail)
-      .then((userDoc) => {
-        if (!userDoc) {
-          done(null, false, { message: 'Account not found. Please create an account first.' });
-          return;
-        }
+async function findOrCreateGoogleUser(profile) {
+  const db = getDb();
+  const email = getGoogleEmail(profile);
 
-        if (!verifyPassword(password, userDoc.password)) {
-          done(null, false, { message: 'Invalid email or password' });
-          return;
-        }
+  if (!email) {
+    throw new AppError('Google account did not provide an email address', 'BAD_USER_INPUT');
+  }
 
-        done(null, buildUserPayload(userDoc));
-      })
-      .catch((err) => done(err));
-  },
-));
+  const name = profile.displayName || email;
+  const givenName = profile.name?.givenName || deriveGivenName(name);
+  const googleProfile = {
+    id: profile.id,
+    email,
+    name,
+    givenName,
+    photo: profile.photos?.[0]?.value || '',
+  };
 
-routes.post('/signup', async (req, res, next) => {
-  try {
-    if (!JWT_SECRET) {
-      res.status(500).send('Missing JWT_SECRET. Refusing to authenticate');
-      return;
-    }
+  const existing = await db.collection('users').findOne({
+    $or: [
+      { googleId: profile.id },
+      { email },
+    ],
+  });
 
-    const email = normalizeEmail(req.body?.email);
-    const password = req.body?.password || '';
-    const name = (req.body?.name || '').trim();
-
-    if (!name || !email || !password) {
-      res.status(400).json({ error: 'Name, email and password are required' });
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      res.status(400).json({ error: 'Please enter a valid email address' });
-      return;
-    }
-
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Password must be at least 6 characters long' });
-      return;
-    }
-
-    const db = getDb();
-    const existing = await db.collection('users').findOne({ email });
-    if (existing) {
-      res.status(409).json({ error: 'An account with this email already exists' });
-      return;
-    }
-
-    const userDoc = {
+  if (existing) {
+    await db.collection('users').updateOne(
+      { _id: existing._id },
+      {
+        $set: {
+          email,
+          name,
+          givenName,
+          googleId: profile.id,
+          googleProfile,
+          authProvider: 'google',
+          updated: new Date(),
+        },
+      },
+    );
+    return buildUserPayload({
+      ...existing,
       email,
       name,
-      givenName: deriveGivenName(name),
-      password: makePasswordRecord(password),
-      created: new Date(),
-      updated: new Date(),
-    };
-
-    const result = await db.collection('users').insertOne(userDoc);
-    const saved = await db.collection('users').findOne({ _id: result.insertedId });
-    const user = buildUserPayload(saved);
-    signUserIn(res, user);
-    res.status(201).json(user);
-  } catch (err) {
-    next(err);
+      givenName,
+    });
   }
-});
 
-routes.post('/signin', (req, res, next) => {
+  const userDoc = {
+    email,
+    name,
+    givenName,
+    googleId: profile.id,
+    googleProfile,
+    authProvider: 'google',
+    created: new Date(),
+    updated: new Date(),
+  };
+
+  const insertResult = await db.collection('users').insertOne(userDoc);
+  const saved = await db.collection('users').findOne({ _id: insertResult.insertedId });
+  return buildUserPayload(saved);
+}
+
+const googleAuthConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+
+if (googleAuthConfigured) {
+  passport.use(new GoogleStrategy(
+    {
+      clientID: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      callbackURL: GOOGLE_CALLBACK_URL,
+    },
+    (_accessToken, _refreshToken, profile, done) => {
+      findOrCreateGoogleUser(profile)
+        .then((user) => done(null, user))
+        .catch((err) => done(err));
+    },
+  ));
+} else {
+  console.log('Missing Google OAuth env vars. Google sign-in disabled');
+}
+
+function requireGoogleConfig(_req, res, next) {
   if (!JWT_SECRET) {
     res.status(500).send('Missing JWT_SECRET. Refusing to authenticate');
     return;
   }
 
-  if (!isValidEmail(req.body?.email)) {
-    res.status(400).json({ error: 'Please enter a valid email address' });
+  if (!googleAuthConfigured) {
+    res.status(500).json({
+      error: 'Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
+    });
     return;
   }
 
-  passport.authenticate('local', { session: false }, (err, user, info) => {
+  next();
+}
+
+routes.get(
+  '/google',
+  requireGoogleConfig,
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+  }),
+);
+
+routes.get('/google/callback', requireGoogleConfig, (req, res, next) => {
+  passport.authenticate('google', { session: false }, (err, user) => {
     if (err) {
       next(err);
       return;
     }
+
     if (!user) {
-      res.status(401).json({ error: info?.message || 'Invalid credentials' });
+      res.redirect(AUTH_FAILURE_REDIRECT);
       return;
     }
 
     signUserIn(res, user);
-    res.json(user);
+    res.redirect(AUTH_SUCCESS_REDIRECT);
   })(req, res, next);
 });
 
 routes.post('/signout', async (_req, res) => {
-  res.clearCookie('jwt');
+  res.clearCookie('jwt', cookieOptions());
   res.json({ status: 'ok' });
 });
 

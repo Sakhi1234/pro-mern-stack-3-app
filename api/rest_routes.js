@@ -49,8 +49,8 @@ router.get('/issues', async (req, res, next) => {
 router.get('/issues/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const item = await issue.get({}, { id });
-    res.json({ issue: item });
+    const requestedIssue = await issue.get({}, { id });
+    res.json({ issue: requestedIssue });
   } catch (err) {
     next(err);
   }
@@ -80,13 +80,13 @@ router.post('/issues', async (req, res, next) => {
 router.post('/issues/:id/summary', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const item = await issue.get({}, { id });
-    if (!item) {
+    const issueForSummary = await issue.get({}, { id });
+    if (!issueForSummary) {
       res.status(404).json({ error: 'Issue not found' });
       return;
     }
-    const result = await summarizeIssueWithComments(item);
-    res.json(result);
+    const summaryResult = await summarizeIssueWithComments(issueForSummary);
+    res.json(summaryResult);
   } catch (err) {
     next(err);
   }

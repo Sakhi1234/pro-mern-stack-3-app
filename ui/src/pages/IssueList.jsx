@@ -1,10 +1,15 @@
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Box, Button, CircularProgress, Paper, Pagination, Typography } from '@mui/material';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import IssueFilter from '../components/IssueFilter.jsx';
 import IssueTable from '../components/IssueTable.jsx';
 import IssueDetail from '../components/IssueDetail.jsx';
-import { apiFetch, toQuery } from '../utils/restFetch.js';
+import {
+  closeIssueRequest,
+  deleteIssueRequest,
+  fetchIssueList,
+  restoreIssueRequest,
+} from '../api/issues.js';
 import withToast from '../utils/withToast.jsx';
 import UserContext from '../context/UserContext.js';
 
@@ -21,79 +26,77 @@ function IssueList({ showError, showSuccess }) {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  function loadData() {
+  const loadData = useCallback(async () => {
+    await Promise.resolve();
     setLoading(true);
-    const params = new URLSearchParams(location.search);
-    const vars = {};
-    if (params.get('status')) vars.status = params.get('status');
+    const searchParams = new URLSearchParams(location.search);
+    const listParams = {};
+    if (searchParams.get('status')) listParams.status = searchParams.get('status');
 
-    const effortMin = parseInt(params.get('effortMin'), 10);
-    if (!Number.isNaN(effortMin)) vars.effortMin = effortMin;
-    const effortMax = parseInt(params.get('effortMax'), 10);
-    if (!Number.isNaN(effortMax)) vars.effortMax = effortMax;
+    const effortMin = parseInt(searchParams.get('effortMin'), 10);
+    if (!Number.isNaN(effortMin)) listParams.effortMin = effortMin;
+    const effortMax = parseInt(searchParams.get('effortMax'), 10);
+    if (!Number.isNaN(effortMax)) listParams.effortMax = effortMax;
 
-    const idInt = parseInt(paramsRoute.id, 10);
-    if (!Number.isNaN(idInt)) {
-      vars.selectedId = idInt;
+    const selectedIssueId = parseInt(paramsRoute.id, 10);
+    if (!Number.isNaN(selectedIssueId)) {
+      listParams.selectedId = selectedIssueId;
     }
 
-    let page = parseInt(params.get('page'), 10);
+    let page = parseInt(searchParams.get('page'), 10);
     if (Number.isNaN(page)) page = 1;
-    vars.page = page;
+    listParams.page = page;
 
-    apiFetch(`/issues${toQuery(vars)}`, { method: 'GET' }, showError)
-      .then((data) => {
-        if (data) {
-          setIssues(data.issueList.issues);
-          setSelectedIssue(data.issue || null);
-          setPages(data.issueList.pages || 1);
-        }
-        setLoading(false);
-      });
+    const data = await fetchIssueList(listParams, showError);
+    if (data) {
+      setIssues(data.issueList.issues);
+      setSelectedIssue(data.issue || null);
+      setPages(data.issueList.pages || 1);
+    }
+    setLoading(false);
+  }, [location.search, paramsRoute.id, showError]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadData, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadData]);
+
+  async function closeIssue(index) {
+    const data = await closeIssueRequest(issues[index].id, showError);
+
+    if (!data) {
+      loadData();
+      return;
+    }
+
+    const newList = [...issues];
+    newList[index] = data.issueUpdate;
+    setIssues(newList);
   }
 
-  useEffect(() => { loadData(); }, [location.search, paramsRoute.id]);
+  async function restoreIssue(id) {
+    const data = await restoreIssueRequest(id, showError);
 
-  function closeIssue(index) {
-    apiFetch(`/issues/${issues[index].id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ changes: { status: 'Closed' } }),
-    }, showError)
-      .then((data) => {
-        if (data) {
-          const newList = [...issues];
-          newList[index] = data.issueUpdate;
-          setIssues(newList);
-        } else {
-          loadData();
-        }
-      });
+    if (data?.issueRestore) {
+      showSuccess(`Issue ${id} restored successfully.`);
+      loadData();
+    }
   }
 
-  function restoreIssue(id) {
-    apiFetch(`/issues/${id}/restore`, { method: 'POST' }, showError)
-      .then((data) => {
-        if (data?.issueRestore) {
-          showSuccess(`Issue ${id} restored successfully.`);
-          loadData();
-        }
-      });
-  }
-
-  function deleteIssue(index) {
+  async function deleteIssue(index) {
     const id = issues[index].id;
-    apiFetch(`/issues/${id}`, { method: 'DELETE' }, showError)
-      .then((data) => {
-        if (data?.issueDelete) {
-          const newList = [...issues];
-          if (location.pathname === `/issues/${id}`) navigate(`/issues${location.search}`);
-          newList.splice(index, 1);
-          setIssues(newList);
-          showSuccess(<span>{`Deleted issue ${id} successfully. `}<Button onClick={() => restoreIssue(id)}>UNDO</Button></span>);
-        } else {
-          loadData();
-        }
-      });
+    const data = await deleteIssueRequest(id, showError);
+
+    if (!data?.issueDelete) {
+      loadData();
+      return;
+    }
+
+    const newList = [...issues];
+    if (location.pathname === `/issues/${id}`) navigate(`/issues${location.search}`);
+    newList.splice(index, 1);
+    setIssues(newList);
+    showSuccess(<span>{`Deleted issue ${id} successfully. `}<Button onClick={() => restoreIssue(id)}>UNDO</Button></span>);
   }
 
   if (issues == null || loading) {
@@ -104,8 +107,8 @@ function IssueList({ showError, showSuccess }) {
     );
   }
 
-  const params = new URLSearchParams(location.search);
-  let page = parseInt(params.get('page'), 10);
+  const searchParams = new URLSearchParams(location.search);
+  let page = parseInt(searchParams.get('page'), 10);
   if (Number.isNaN(page)) page = 1;
   const startPage = Math.floor((page - 1) / SECTION_SIZE) * SECTION_SIZE + 1;
   const endPage = startPage + SECTION_SIZE - 1;
@@ -165,10 +168,10 @@ function IssueList({ showError, showSuccess }) {
             <Pagination
               count={Math.max(1, pages)}
               page={page}
-              onChange={(_, p) => {
-                const q = new URLSearchParams(location.search);
-                q.set('page', p);
-                navigate({ search: `?${q.toString()}` });
+              onChange={(_, nextPage) => {
+                const nextSearchParams = new URLSearchParams(location.search);
+                nextSearchParams.set('page', nextPage);
+                navigate({ search: `?${nextSearchParams.toString()}` });
               }}
             />
           </Box>

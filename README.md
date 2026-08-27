@@ -1,9 +1,9 @@
 # pro-mern-stack-3-app
 
-Migrated from `pro-mern-stack-2` to a modern stack:
+This project is split into two app packages:
 
-- Frontend: React 19 + Vite + MUI + react-router-dom
-- Backend: Express REST API + MongoDB
+- `ui/`: React 19 + Vite + MUI frontend
+- `api/`: Express REST API + MongoDB backend
 
 ## Requirements
 
@@ -13,43 +13,80 @@ Migrated from `pro-mern-stack-2` to a modern stack:
 
 ## Local Setup
 
-You need two terminal windows when running locally:
+Run the API and UI in separate terminal windows.
 
-- Terminal 1: UI (`npm run dev`)
-- Terminal 2: API (`npm run api:dev`)
+### API
 
-The frontend and backend are separate processes, so both must be running for the app to work end to end.
-
-## Frontend setup
-
-1. Copy `.env.example` to `.env` and update values if needed.
-2. Install deps: `npm install`
-3. Run UI: `npm run dev`
-
-## API setup
-
-1. Copy `api/sample.env` to `api/.env`
-2. Install API deps: `npm --prefix api install`
-3. Run API: `npm run api:dev`
+```bash
+cd api
+cp sample.env .env
+npm install
+npm run dev
+```
 
 API runs on `http://localhost:3000`.
-REST base endpoint: `http://localhost:3000/api`
-Auth endpoint: `http://localhost:3000/auth`
+REST base endpoint: `http://localhost:3000/api`.
+Auth endpoint: `http://localhost:3000/auth`.
 
-## AI-assisted issue summaries
+For Google sign-in, set these values in `api/.env`:
+
+```bash
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+```
+
+In Google Cloud Console, add this authorized redirect URI:
+
+```text
+http://localhost:3000/auth/google/callback
+```
+
+### UI
+
+```bash
+cd ui
+cp .env.example .env
+npm install
+npm run dev
+```
+
+UI runs on `http://localhost:9000`.
+
+## Local API Proxy
+
+The UI Vite dev server proxies `/api` and `/auth` to `http://localhost:3000`, so browser requests stay same-origin in local development.
+
+The API also enables credentialed CORS for `UI_SERVER_ORIGIN`, which defaults to `http://localhost:9000`.
+
+## Auth
+
+- Users sign in with Google.
+- Passport Google OAuth verifies the Google account.
+- The API stores the app JWT in an HTTP-only cookie named `jwt`.
+- `COOKIE_DOMAIN` is optional and usually not needed for local development on `localhost`.
+- Set `JWT_SECRET` in `api/.env` for production.
+
+## AI-Assisted Issue Summaries
 
 - Add `GROQ_API_KEY` in `api/.env` to enable AI summarization.
-- Optional: set `GROQ_MODEL` (default `llama-3.1-8b-instant`).
+- Optional: set `GROQ_MODEL`, which defaults to `llama-3.1-8b-instant`.
 - Open an issue and use **Summarize with AI** to generate a concise summary of the issue and its comments.
 
-## CORS and local dev
+## Useful Commands
 
-- Vite proxies `/api` and `/auth` to backend, so browser requests stay same-origin in local dev.
-- Backend CORS is enabled with credentials and preflight handling for the configured `UI_SERVER_ORIGIN`.
+From `api/`:
 
-## Notes
+```bash
+npm run dev
+npm run start
+```
 
-- Use the custom account form to create an account with name, email, and password.
-- Passport local auth verifies those credentials on sign in.
-- `COOKIE_DOMAIN` is optional and usually not needed for local development on `localhost`.
-- Set `JWT_SECRET` in `api/.env` for production. The API uses a temporary dev secret only when `JWT_SECRET` is missing outside production.
+From `ui/`:
+
+```bash
+npm run dev
+npm run lint
+npm run build
+npm run preview
+```

@@ -11,13 +11,13 @@ async function connectToDb() {
 }
 
 async function getNextSequence(name) {
-  const result = await db.collection('counters').findOneAndUpdate(
+  const sequenceResult = await db.collection('counters').findOneAndUpdate(
     { _id: name },
     { $inc: { current: 1 } },
     { upsert: true, returnDocument: 'after' },
   );
 
-  return result.current;
+  return sequenceResult.current;
 }
 
 function getDb() {

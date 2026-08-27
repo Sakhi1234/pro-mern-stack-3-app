@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { TextField } from '@mui/material';
 import { formatNumberValue, parseNumberValue } from '../utils/InputUtils.js';
 
 export default function NumInput({ value, onChange, ...props }) {
   const [localValue, setLocalValue] = useState(formatNumberValue(value));
-
-  useEffect(() => setLocalValue(formatNumberValue(value)), [value]);
 
   return (
     <TextField

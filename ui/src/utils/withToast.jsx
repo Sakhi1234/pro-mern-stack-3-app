@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import Toast from '../components/Toast.jsx';
 
 export default function withToast(OriginalComponent) {
@@ -7,17 +7,17 @@ export default function withToast(OriginalComponent) {
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState('success');
 
-    function showSuccess(message) {
+    const showSuccess = useCallback((message) => {
       setToastType('success');
       setToastMessage(message);
       setToastVisible(true);
-    }
+    }, []);
 
-    function showError(message) {
+    const showError = useCallback((message) => {
       setToastType('error');
       setToastMessage(message);
       setToastVisible(true);
-    }
+    }, []);
 
     return (
       <>

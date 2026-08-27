@@ -4,7 +4,7 @@ import { components } from "react-select";
 import CloseIcon from "@mui/icons-material/Close";
 import { Alert, Box, IconButton, Snackbar } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
-import { apiFetch, toQuery } from "../utils/restFetch.js";
+import { searchIssues } from "../api/issues.js";
 
 function Search() {
   const location = useLocation();
@@ -35,11 +35,7 @@ function Search() {
     }
 
     debounceRef.current = setTimeout(() => {
-      apiFetch(
-        `/issues${toQuery({ search: term })}`,
-        { method: "GET" },
-        showError,
-      )
+      searchIssues(term, showError)
         .then((data) => {
           callback(
             (data?.issueList?.issues || []).map((issue) => ({

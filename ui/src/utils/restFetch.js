@@ -5,22 +5,22 @@ function toQuery(params) {
   Object.entries(params || {}).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') search.set(key, String(value));
   });
-  const qs = search.toString();
-  return qs ? `?${qs}` : '';
+  const queryString = search.toString();
+  return queryString ? `?${queryString}` : '';
 }
 
 function reviveDates(value) {
   if (Array.isArray(value)) return value.map(reviveDates);
   if (value && typeof value === 'object') {
-    const out = {};
-    Object.entries(value).forEach(([k, v]) => {
-      out[k] = reviveDates(v);
+    const revivedValue = {};
+    Object.entries(value).forEach(([key, nestedValue]) => {
+      revivedValue[key] = reviveDates(nestedValue);
     });
-    return out;
+    return revivedValue;
   }
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? value : d;
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime()) ? value : parsedDate;
   }
   return value;
 }
@@ -35,12 +35,13 @@ export async function apiFetch(path, options = {}, showError = null) {
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       withCredentials: true,
     });
+    // Convert API date strings back to Date objects for UI formatters.
     return reviveDates(response.data);
-  } catch (err) {
-    const payload = err?.response?.data;
+  } catch (error) {
+    const payload = error?.response?.data;
     const message = payload?.details?.length
       ? `${payload.error}:\n ${payload.details.join('\n ')}`
-      : payload?.error || payload?.message || err.message || 'Request failed';
+      : payload?.error || payload?.message || error.message || 'Request failed';
     if (showError) showError(message);
     return null;
   }

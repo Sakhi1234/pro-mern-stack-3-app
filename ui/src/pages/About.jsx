@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
-import { apiFetch } from '../utils/restFetch.js';
+import { fetchAbout } from '../api/about.js';
 
 export default function About() {
   const [apiAbout, setApiAbout] = useState(null);
 
   useEffect(() => {
-    apiFetch('/about')
+    fetchAbout()
       .then((data) => {
       setApiAbout(data?.about || '');
       });

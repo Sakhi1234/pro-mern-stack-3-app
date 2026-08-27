@@ -1,11 +1,24 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from '../utils/restFetch.js';
+import { generateIssueSummary, updateIssue } from '../api/issues.js';
 import UserContext from '../context/UserContext.js';
 import IssueComments from './IssueComments.jsx';
 
 export default function IssueDetail({ issue, showError, showSuccess }) {
+  if (!issue) return null;
+
+  return (
+    <IssueDetailContent
+      key={`${issue.id}:${issue.description || ''}`}
+      issue={issue}
+      showError={showError}
+      showSuccess={showSuccess}
+    />
+  );
+}
+
+function IssueDetailContent({ issue, showError, showSuccess }) {
   const navigate = useNavigate();
   const user = useContext(UserContext);
   const [aiSummary, setAiSummary] = useState(null);
@@ -13,27 +26,9 @@ export default function IssueDetail({ issue, showError, showSuccess }) {
   const [editingDescription, setEditingDescription] = useState(false);
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionText, setDescriptionText] = useState(issue?.description || '');
-  const clearSummary = useCallback(() => {
-    setAiSummary(null);
-  }, []);
-
-  useEffect(() => {
-    setAiSummary(null);
-    setLoadingSummary(false);
-    setEditingDescription(false);
-    setSavingDescription(false);
-    setDescriptionText(issue?.description || '');
-  }, [issue?.id, issue?.description]);
-
-  if (!issue) return null;
-
   async function generateSummary() {
     setLoadingSummary(true);
-    const data = await apiFetch(
-      `/issues/${issue.id}/summary`,
-      { method: 'POST' },
-      showError,
-    );
+    const data = await generateIssueSummary(issue.id, showError);
     setLoadingSummary(false);
 
     if (data?.aiSummary) {
@@ -45,18 +40,7 @@ export default function IssueDetail({ issue, showError, showSuccess }) {
   async function saveDescription() {
     try {
       setSavingDescription(true);
-      const data = await apiFetch(
-        `/issues/${issue.id}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({
-            changes: {
-              description: descriptionText,
-            },
-          }),
-        },
-        showError,
-      );
+      const data = await updateIssue(issue.id, { description: descriptionText }, showError);
 
       if (data?.issueUpdate) {
         setDescriptionText(data.issueUpdate.description || '');
@@ -182,7 +166,7 @@ export default function IssueDetail({ issue, showError, showSuccess }) {
         issue={issue}
         showError={showError}
         showSuccess={showSuccess}
-        onCommentsChange={clearSummary}
+        onCommentsChange={() => setAiSummary(null)}
       />
     </>
   );

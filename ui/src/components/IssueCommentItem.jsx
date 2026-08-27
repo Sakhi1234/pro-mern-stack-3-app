@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Avatar, Box, Button, IconButton, Paper, TextField, Typography } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
-import { apiFetch } from '../utils/restFetch.js';
+import { deleteIssueComment, updateIssueComment } from '../api/comments.js';
 import { formatDateTimeForDisplay } from '../utils/DateUtils.js';
 
 function canManageComment(comment, currentUser) {
@@ -28,13 +28,6 @@ export default function IssueCommentItem({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    setDraft(comment.text || '');
-    setEditing(false);
-    setSaving(false);
-    setDeleting(false);
-  }, [comment.id, comment.text]);
-
   const canManage = canManageComment(comment, currentUser);
   const updatedAt = comment.updatedAt || null;
 
@@ -43,14 +36,7 @@ export default function IssueCommentItem({
     if (!text) return;
 
     setSaving(true);
-    const data = await apiFetch(
-      `/issues/${issueId}/comments/${comment.id}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({ comment: text }),
-      },
-      showError,
-    );
+    const data = await updateIssueComment(issueId, comment.id, text, showError);
     setSaving(false);
 
     if (data?.commentUpdate) {
@@ -65,11 +51,7 @@ export default function IssueCommentItem({
     if (!confirmed) return;
 
     setDeleting(true);
-    const data = await apiFetch(
-      `/issues/${issueId}/comments/${comment.id}`,
-      { method: 'DELETE' },
-      showError,
-    );
+    const data = await deleteIssueComment(issueId, comment.id, showError);
     setDeleting(false);
 
     if (data?.commentDelete) {

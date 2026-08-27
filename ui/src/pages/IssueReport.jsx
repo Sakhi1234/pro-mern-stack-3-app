@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import IssueFilter from '../components/IssueFilter.jsx';
 import withToast from '../utils/withToast.jsx';
-import { apiFetch, toQuery } from '../utils/restFetch.js';
+import { fetchIssueCounts } from '../api/reports.js';
 
 const statuses = ['New', 'Assigned', 'Fixed', 'Closed'];
 
@@ -11,23 +11,25 @@ function IssueReport({ showError }) {
   const location = useLocation();
   const [stats, setStats] = useState(null);
 
-  function loadData() {
-    const params = new URLSearchParams(location.search);
-    const vars = {};
-    if (params.get('status')) vars.status = params.get('status');
+  const loadData = useCallback(async () => {
+    await Promise.resolve();
+    const searchParams = new URLSearchParams(location.search);
+    const reportParams = {};
+    if (searchParams.get('status')) reportParams.status = searchParams.get('status');
 
-    const effortMin = parseInt(params.get('effortMin'), 10);
-    if (!Number.isNaN(effortMin)) vars.effortMin = effortMin;
-    const effortMax = parseInt(params.get('effortMax'), 10);
-    if (!Number.isNaN(effortMax)) vars.effortMax = effortMax;
+    const effortMin = parseInt(searchParams.get('effortMin'), 10);
+    if (!Number.isNaN(effortMin)) reportParams.effortMin = effortMin;
+    const effortMax = parseInt(searchParams.get('effortMax'), 10);
+    if (!Number.isNaN(effortMax)) reportParams.effortMax = effortMax;
 
-    apiFetch(`/issue-counts${toQuery(vars)}`, { method: 'GET' }, showError)
-      .then((data) => {
-        if (data) setStats(data.issueCounts);
-      });
-  }
+    const data = await fetchIssueCounts(reportParams, showError);
+    if (data) setStats(data.issueCounts);
+  }, [location.search, showError]);
 
-  useEffect(() => { loadData(); }, [location.search]);
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadData, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [loadData]);
 
   if (stats == null) return null;
 

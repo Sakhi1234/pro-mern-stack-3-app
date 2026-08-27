@@ -33,6 +33,7 @@ app.use('/auth', auth.routes);
 app.use('/api', restRoutes);
 
 app.use((err, _req, res, _next) => {
+  void _next;
   console.error(err);
   if (err?.code === 'UNAUTHENTICATED') {
     res.status(401).json({ error: err.message, code: err.code });

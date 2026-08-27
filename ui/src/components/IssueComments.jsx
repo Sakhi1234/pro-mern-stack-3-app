@@ -1,29 +1,42 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { Box, Button, Divider, Paper, TextField, Typography } from '@mui/material';
-import { apiFetch } from '../utils/restFetch.js';
+import { addIssueComment } from '../api/comments.js';
 import UserContext from '../context/UserContext.js';
 import IssueCommentItem from './IssueCommentItem.jsx';
-
-const NOOP = () => {};
 
 export default function IssueComments({
   issue,
   showError = () => {},
   showSuccess = () => {},
-  onCommentsChange = NOOP,
+  onCommentsChange,
+}) {
+  if (!issue?.id) return null;
+
+  const commentsKey = (issue.comments || [])
+    .map((comment) => `${comment.id}:${comment.updatedAt || comment.text || ''}`)
+    .join('|');
+
+  return (
+    <IssueCommentsContent
+      key={`${issue.id}:${commentsKey}`}
+      issue={issue}
+      showError={showError}
+      showSuccess={showSuccess}
+      onCommentsChange={onCommentsChange}
+    />
+  );
+}
+
+function IssueCommentsContent({
+  issue,
+  showError,
+  showSuccess,
+  onCommentsChange,
 }) {
   const user = useContext(UserContext);
   const [comments, setComments] = useState(issue?.comments || []);
   const [commentText, setCommentText] = useState('');
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    setComments(issue?.comments || []);
-    setCommentText('');
-    setSaving(false);
-    onCommentsChange?.(issue?.comments || []);
-  }, [issue?.id, issue?.comments, onCommentsChange]);
-
-  if (!issue?.id) return null;
 
   async function submitComment(e) {
     e.preventDefault();
@@ -31,14 +44,7 @@ export default function IssueComments({
     if (!text) return;
 
     setSaving(true);
-    const data = await apiFetch(
-      `/issues/${issue.id}/comments`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ comment: text }),
-      },
-      showError,
-    );
+    const data = await addIssueComment(issue.id, text, showError);
     setSaving(false);
 
     if (data?.commentAdd) {

@@ -78,8 +78,8 @@ async function add(_root, { issue }) {
     created: new Date(),
     id: await getNextSequence('issues'),
   };
-  const result = await db.collection('issues').insertOne(newIssue);
-  return db.collection('issues').findOne({ _id: result.insertedId });
+  const insertResult = await db.collection('issues').insertOne(newIssue);
+  return db.collection('issues').findOne({ _id: insertResult.insertedId });
 }
 
 async function update(_root, { id, changes }) {
@@ -101,11 +101,11 @@ async function remove(_root, { id }) {
   if (!issue) return false;
 
   issue.deleted = new Date();
-  const insert = await db.collection('deleted_issues').insertOne(issue);
-  if (!insert.insertedId) return false;
+  const archiveResult = await db.collection('deleted_issues').insertOne(issue);
+  if (!archiveResult.insertedId) return false;
 
-  const del = await db.collection('issues').deleteOne({ id });
-  return del.deletedCount === 1;
+  const deleteResult = await db.collection('issues').deleteOne({ id });
+  return deleteResult.deletedCount === 1;
 }
 
 async function restore(_root, { id }) {
@@ -114,11 +114,11 @@ async function restore(_root, { id }) {
   if (!issue) return false;
 
   issue.deleted = new Date();
-  const insert = await db.collection('issues').insertOne(issue);
-  if (!insert.insertedId) return false;
+  const restoreResult = await db.collection('issues').insertOne(issue);
+  if (!restoreResult.insertedId) return false;
 
-  const del = await db.collection('deleted_issues').deleteOne({ id });
-  return del.deletedCount === 1;
+  const archiveDeleteResult = await db.collection('deleted_issues').deleteOne({ id });
+  return archiveDeleteResult.deletedCount === 1;
 }
 
 async function addComment(_root, { id, comment }, { user }) {
@@ -137,12 +137,12 @@ async function addComment(_root, { id, comment }, { user }) {
     created: new Date(),
   };
 
-  const result = await db.collection('issues').updateOne(
+  const updateResult = await db.collection('issues').updateOne(
     { id },
     { $push: { comments: newComment } },
   );
 
-  if (result.modifiedCount !== 1) return false;
+  if (updateResult.modifiedCount !== 1) return false;
   return newComment;
 }
 
@@ -163,7 +163,7 @@ async function updateComment(_root, { id, commentId, comment }, { user }) {
   const updatedAt = new Date();
   const updatedComment = { ...existing, text, updatedAt };
 
-  const result = await db.collection('issues').updateOne(
+  const updateResult = await db.collection('issues').updateOne(
     { id, 'comments.id': commentId },
     {
       $set: {
@@ -173,7 +173,7 @@ async function updateComment(_root, { id, commentId, comment }, { user }) {
     },
   );
 
-  if (result.modifiedCount !== 1) return false;
+  if (updateResult.modifiedCount !== 1) return false;
   return updatedComment;
 }
 
@@ -190,12 +190,12 @@ async function deleteComment(_root, { id, commentId }, { user }) {
     throw new AppError('You can only delete your own comments.', 'UNAUTHENTICATED');
   }
 
-  const result = await db.collection('issues').updateOne(
+  const updateResult = await db.collection('issues').updateOne(
     { id },
     { $pull: { comments: { id: commentId } } },
   );
 
-  if (result.modifiedCount !== 1) return false;
+  if (updateResult.modifiedCount !== 1) return false;
   return true;
 }
 

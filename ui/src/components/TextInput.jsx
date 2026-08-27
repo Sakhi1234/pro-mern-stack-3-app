@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { TextField } from '@mui/material';
 import { formatTextValue, parseTextValue } from '../utils/InputUtils.js';
 
 export default function TextInput({ value, onChange, multiline = false, rows, ...props }) {
   const [localValue, setLocalValue] = useState(formatTextValue(value));
-
-  useEffect(() => setLocalValue(formatTextValue(value)), [value]);
 
   return (
     <TextField
