@@ -1,20 +1,20 @@
-import { useCallback, useState } from 'react';
-import Toast from '../components/Toast.jsx';
+import { useCallback, useState } from "react";
+import Toast from "../components/Toast.jsx";
 
 export default function withToast(OriginalComponent) {
   return function ToastWrapper(props) {
     const [toastVisible, setToastVisible] = useState(false);
-    const [toastMessage, setToastMessage] = useState('');
-    const [toastType, setToastType] = useState('success');
+    const [toastMessage, setToastMessage] = useState("");
+    const [toastType, setToastType] = useState("success");
 
     const showSuccess = useCallback((message) => {
-      setToastType('success');
+      setToastType("success");
       setToastMessage(message);
       setToastVisible(true);
     }, []);
 
     const showError = useCallback((message) => {
-      setToastType('error');
+      setToastType("error");
       setToastMessage(message);
       setToastVisible(true);
     }, []);

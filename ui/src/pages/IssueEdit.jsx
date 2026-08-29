@@ -11,10 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { createIssue, fetchIssue, updateIssue } from "../api/issues.js";
-import {
-  daysFromNow,
-  formatDateForDisplay,
-} from "../utils/DateUtils.js";
+import { daysFromNow, formatDateForDisplay } from "../utils/DateUtils.js";
 import NumInput from "../components/NumInput.jsx";
 import DateInput from "../components/DateInput.jsx";
 import TextInput from "../components/TextInput.jsx";
@@ -36,41 +33,51 @@ function normalizeIssue(issue) {
 
 function IssueEdit({ showSuccess, showError }) {
   const { id: routeId } = useParams();
+  return (
+    <IssueEditContent
+      key={routeId || "create"}
+      routeId={routeId}
+      showSuccess={showSuccess}
+      showError={showError}
+    />
+  );
+}
+
+function createDraftIssue() {
+  return {
+    status: "New",
+    owner: "",
+    effort: null,
+    due: daysFromNow(10),
+    title: "",
+    description: "",
+    created: new Date(),
+  };
+}
+
+function IssueEditContent({ routeId, showSuccess, showError }) {
   const navigate = useNavigate();
   const user = useContext(UserContext);
   const isCreateMode = routeId == null;
-  const [issue, setIssue] = useState(null);
+  const [issue, setIssue] = useState(() => (isCreateMode ? createDraftIssue() : null));
   const [invalidFields, setInvalidFields] = useState({});
   const [showingValidation, setShowingValidation] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!isCreateMode);
 
   useEffect(() => {
-    let ignore = false;
+    if (isCreateMode) return undefined;
+
+    const abortController = new AbortController();
 
     async function loadData() {
-      await Promise.resolve();
-      if (ignore) return;
+      const data = await fetchIssue(
+        routeId,
+        showError,
+        { signal: abortController.signal },
+      );
+      if (!data) return;
 
-      setLoading(true);
-      if (isCreateMode) {
-        setIssue({
-          status: "New",
-          owner: "",
-          effort: null,
-          due: daysFromNow(10),
-          title: "",
-          description: "",
-          created: new Date(),
-        });
-        setInvalidFields({});
-        setLoading(false);
-        return;
-      }
-
-      const data = await fetchIssue(routeId, showError);
-      if (ignore) return;
-
-      setIssue(data ? normalizeIssue(data.issue) : {});
+      setIssue(normalizeIssue(data.issue));
       setInvalidFields({});
       setLoading(false);
     }
@@ -78,7 +85,7 @@ function IssueEdit({ showSuccess, showError }) {
     loadData();
 
     return () => {
-      ignore = true;
+      abortController.abort();
     };
   }, [isCreateMode, routeId, showError]);
 
@@ -168,7 +175,8 @@ function IssueEdit({ showSuccess, showError }) {
       </Typography>
       {!isCreateMode && !user.signedIn ? (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Sign in to edit the description, add or edit comments, or take actions on this issue.
+          Sign in to edit the description, add or edit comments, or take actions
+          on this issue.
         </Alert>
       ) : null}
       <Box
@@ -247,7 +255,13 @@ function IssueEdit({ showSuccess, showError }) {
           </Button>
         </Box>
       </Box>
-      {!isCreateMode ? <IssueComments issue={issue} showError={showError} showSuccess={showSuccess} /> : null}
+      {!isCreateMode ? (
+        <IssueComments
+          issue={issue}
+          showError={showError}
+          showSuccess={showSuccess}
+        />
+      ) : null}
       {!isCreateMode ? (
         <Box sx={{ mt: 2 }}>
           <Link to={`/edit/${issue.id - 1}`}>Prev</Link>

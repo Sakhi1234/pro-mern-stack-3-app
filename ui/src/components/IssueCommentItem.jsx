@@ -1,16 +1,26 @@
-import { useState } from 'react';
-import { Avatar, Box, Button, IconButton, Paper, TextField, Typography } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import { deleteIssueComment, updateIssueComment } from '../api/comments.js';
-import { formatDateTimeForDisplay } from '../utils/DateUtils.js';
+import { useState } from "react";
+import {
+  Avatar,
+  Box,
+  Button,
+  IconButton,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import { deleteIssueComment, updateIssueComment } from "../api/comments.js";
+import { formatDateTimeForDisplay } from "../utils/DateUtils.js";
 
 function canManageComment(comment, currentUser) {
   if (!currentUser?.signedIn) return false;
-  if (comment.authorEmail && currentUser.email) return comment.authorEmail === currentUser.email;
-  if (comment.authorName && currentUser.givenName) return comment.authorName === currentUser.givenName;
+  if (comment.authorEmail && currentUser.email)
+    return comment.authorEmail === currentUser.email;
+  if (comment.authorName && currentUser.givenName)
+    return comment.authorName === currentUser.givenName;
   return false;
 }
 
@@ -24,7 +34,7 @@ export default function IssueCommentItem({
   showSuccess = () => {},
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(comment.text || '');
+  const [draft, setDraft] = useState(comment.text || "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -42,12 +52,12 @@ export default function IssueCommentItem({
     if (data?.commentUpdate) {
       onUpdate(data.commentUpdate);
       setEditing(false);
-      showSuccess('Comment updated.');
+      showSuccess("Comment updated.");
     }
   }
 
   async function removeComment() {
-    const confirmed = window.confirm('Delete this comment?');
+    const confirmed = window.confirm("Delete this comment?");
     if (!confirmed) return;
 
     setDeleting(true);
@@ -56,27 +66,40 @@ export default function IssueCommentItem({
 
     if (data?.commentDelete) {
       onDelete(comment.id);
-      showSuccess('Comment deleted.');
+      showSuccess("Comment deleted.");
     }
   }
 
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 1.5, borderRadius: 2, backgroundColor: 'rgba(15, 118, 110, 0.03)' }}
+      sx={{
+        p: 1.5,
+        borderRadius: 2,
+        backgroundColor: "rgba(15, 118, 110, 0.03)",
+      }}
     >
-      <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13 }}>
-          {(comment.authorName || 'A').slice(0, 1).toUpperCase()}
+      <Box sx={{ display: "flex", gap: 1.25, alignItems: "flex-start" }}>
+        <Avatar
+          sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: 13 }}
+        >
+          {(comment.authorName || "A").slice(0, 1).toUpperCase()}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "baseline",
+              flexWrap: "wrap",
+            }}
+          >
             <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
-              {comment.authorName || comment.authorEmail || 'Anonymous'}
+              {comment.authorName || comment.authorEmail || "Anonymous"}
             </Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: 12 }}>
+            <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
               {formatDateTimeForDisplay(comment.created)}
-              {updatedAt ? ' • edited' : ''}
+              {updatedAt ? " • edited" : ""}
             </Typography>
           </Box>
 
@@ -91,7 +114,7 @@ export default function IssueCommentItem({
                 onChange={(e) => setDraft(e.target.value)}
                 disabled={saving}
               />
-              <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
                 <Button
                   variant="contained"
                   size="small"
@@ -99,14 +122,14 @@ export default function IssueCommentItem({
                   onClick={saveEdit}
                   disabled={saving || !draft.trim()}
                 >
-                  {saving ? 'Saving...' : 'Save'}
+                  {saving ? "Saving..." : "Save"}
                 </Button>
                 <Button
                   variant="outlined"
                   size="small"
                   startIcon={<CloseIcon />}
                   onClick={() => {
-                    setDraft(comment.text || '');
+                    setDraft(comment.text || "");
                     setEditing(false);
                   }}
                   disabled={saving}
@@ -116,18 +139,26 @@ export default function IssueCommentItem({
               </Box>
             </Box>
           ) : (
-            <Typography sx={{ mt: 0.75, whiteSpace: 'pre-wrap', fontSize: 14 }}>
+            <Typography sx={{ mt: 0.75, whiteSpace: "pre-wrap", fontSize: 14 }}>
               {comment.text}
             </Typography>
           )}
         </Box>
 
         {canManage && !editing ? (
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <IconButton size="small" onClick={() => setEditing(true)} disabled={deleting}>
+          <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+            <IconButton
+              size="small"
+              onClick={() => setEditing(true)}
+              disabled={deleting}
+            >
               <EditIcon fontSize="small" />
             </IconButton>
-            <IconButton size="small" onClick={removeComment} disabled={deleting}>
+            <IconButton
+              size="small"
+              onClick={removeComment}
+              disabled={deleting}
+            >
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Box>

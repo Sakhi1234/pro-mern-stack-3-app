@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Alert, Snackbar } from '@mui/material';
+import { useEffect } from "react";
+import { Alert, Snackbar } from "@mui/material";
 
 export default function Toast({ showing, severity, onDismiss, children }) {
   useEffect(() => {
@@ -9,8 +9,11 @@ export default function Toast({ showing, severity, onDismiss, children }) {
   }, [showing, onDismiss]);
 
   return (
-    <Snackbar open={showing} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
-      <Alert severity={severity} onClose={onDismiss} sx={{ width: '100%' }}>
+    <Snackbar
+      open={showing}
+      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+    >
+      <Alert severity={severity} onClose={onDismiss} sx={{ width: "100%" }}>
         {children}
       </Alert>
     </Snackbar>

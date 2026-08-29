@@ -1,19 +1,27 @@
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
-import IssueRow from './IssueRow.jsx';
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
+import IssueRow from "./IssueRow.jsx";
 
 export default function IssueTable({ issues, closeIssue, deleteIssue }) {
   return (
     <TableContainer
       component={Paper}
       variant="outlined"
-      sx={{ mt: 2, overflow: 'hidden' }}
+      sx={{ mt: 2, overflow: "hidden" }}
     >
       <Table size="small">
         <TableHead>
           <TableRow
             sx={{
-              '& .MuiTableCell-root': {
-                backgroundColor: 'rgba(15, 118, 110, 0.06)',
+              "& .MuiTableCell-root": {
+                backgroundColor: "rgba(15, 118, 110, 0.06)",
                 fontWeight: 700,
               },
             }}

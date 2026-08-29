@@ -1,5 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import routes from '../routes/routes.js';
+import { Navigate, Route, Routes } from "react-router-dom";
+import routes from "../routes/routes.js";
 
 export default function Contents() {
   return (
@@ -10,7 +10,12 @@ export default function Contents() {
             <Route
               key={index}
               path={route.path}
-              element={<Navigate to={route.redirectTo} replace={Boolean(route.replace)} />}
+              element={
+                <Navigate
+                  to={route.redirectTo}
+                  replace={Boolean(route.replace)}
+                />
+              }
             />
           );
         }

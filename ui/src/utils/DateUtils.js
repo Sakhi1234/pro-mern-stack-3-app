@@ -1,9 +1,15 @@
+const DATE_INPUT_TEXT_PATTERN = /^[\d-]*$/;
+
+export function isDateInputText(value) {
+  return DATE_INPUT_TEXT_PATTERN.test(value);
+}
+
 export function formatDateForDisplay(date) {
-  return date != null ? date.toDateString() : '';
+  return date != null ? date.toDateString() : "";
 }
 
 export function formatDateForInput(date) {
-  return date != null ? date.toISOString().slice(0, 10) : '';
+  return date != null ? date.toISOString().slice(0, 10) : "";
 }
 
 export function parseDateInput(value) {
@@ -16,9 +22,9 @@ export function daysFromNow(days) {
 }
 
 export function formatDateTimeForDisplay(date) {
-  if (date == null) return '';
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+  if (date == null) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
   }).format(date);
 }

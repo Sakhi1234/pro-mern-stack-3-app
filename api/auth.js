@@ -208,6 +208,7 @@ routes.post('/signout', async (_req, res) => {
 });
 
 routes.get('/user', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json(getUser(req));
 });
 

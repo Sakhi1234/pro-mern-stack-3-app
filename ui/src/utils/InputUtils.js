@@ -1,5 +1,11 @@
+const INTEGER_TEXT_PATTERN = /^\d*$/;
+
+export function isIntegerText(value) {
+  return INTEGER_TEXT_PATTERN.test(value);
+}
+
 export function formatNumberValue(numberValue) {
-  return numberValue != null ? numberValue.toString() : '';
+  return numberValue != null ? numberValue.toString() : "";
 }
 
 export function parseNumberValue(textValue) {
@@ -8,7 +14,7 @@ export function parseNumberValue(textValue) {
 }
 
 export function formatTextValue(text) {
-  return text != null ? text : '';
+  return text != null ? text : "";
 }
 
 export function parseTextValue(text) {

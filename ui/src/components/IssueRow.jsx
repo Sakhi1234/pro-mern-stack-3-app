@@ -1,18 +1,18 @@
-import { useContext } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Chip, IconButton, TableCell, TableRow, Tooltip } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
-import UserContext from '../context/UserContext.js';
-import { formatDateForDisplay } from '../utils/DateUtils.js';
+import { useContext } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Chip, IconButton, TableCell, TableRow, Tooltip } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
+import UserContext from "../context/UserContext.js";
+import { formatDateForDisplay } from "../utils/DateUtils.js";
 
 function statusColor(status) {
-  if (status === 'New') return 'default';
-  if (status === 'Assigned') return 'info';
-  if (status === 'Fixed') return 'success';
-  if (status === 'Closed') return 'warning';
-  return 'default';
+  if (status === "New") return "default";
+  if (status === "Assigned") return "info";
+  if (status === "Fixed") return "success";
+  if (status === "Closed") return "warning";
+  return "default";
 }
 
 export default function IssueRow({ issue, index, closeIssue, deleteIssue }) {
@@ -28,8 +28,8 @@ export default function IssueRow({ issue, index, closeIssue, deleteIssue }) {
       hover
       onClick={onRowClick}
       sx={{
-        cursor: 'pointer',
-        '&:last-child td': { borderBottom: 0 },
+        cursor: "pointer",
+        "&:last-child td": { borderBottom: 0 },
       }}
     >
       <TableCell>{issue.id}</TableCell>

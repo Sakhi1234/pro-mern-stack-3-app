@@ -1,31 +1,31 @@
-import { useState } from 'react';
-import { Button, Menu, MenuItem } from '@mui/material';
-import GoogleIcon from '@mui/icons-material/Google';
-import withToast from '../utils/withToast.jsx';
+import { useState } from "react";
+import { Button, Menu, MenuItem } from "@mui/material";
+import GoogleIcon from "@mui/icons-material/Google";
+import withToast from "../utils/withToast.jsx";
 
 function SignInNavItem({ user, onUserChange, showError }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [signingOut, setSigningOut] = useState(false);
 
   function signInWithGoogle() {
-    const apiEndpoint = import.meta.env.VITE_UI_AUTH_ENDPOINT || '/auth';
+    const apiEndpoint = import.meta.env.VITE_UI_AUTH_ENDPOINT || "/auth";
     window.location.assign(`${apiEndpoint}/google`);
   }
 
   async function signOut() {
     try {
       setSigningOut(true);
-      const apiEndpoint = import.meta.env.VITE_UI_AUTH_ENDPOINT || '/auth';
+      const apiEndpoint = import.meta.env.VITE_UI_AUTH_ENDPOINT || "/auth";
 
       await fetch(`${apiEndpoint}/signout`, {
-        method: 'POST',
-        credentials: 'include',
+        method: "POST",
+        credentials: "include",
       });
       onUserChange({
         signedIn: false,
-        givenName: '',
-        name: '',
-        email: '',
+        givenName: "",
+        name: "",
+        email: "",
       });
 
       setMenuAnchor(null);
@@ -57,7 +57,11 @@ function SignInNavItem({ user, onUserChange, showError }) {
   }
 
   return (
-    <Button color="inherit" startIcon={<GoogleIcon />} onClick={signInWithGoogle}>
+    <Button
+      color="inherit"
+      startIcon={<GoogleIcon />}
+      onClick={signInWithGoogle}
+    >
       Sign in
     </Button>
   );

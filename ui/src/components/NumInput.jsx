@@ -1,6 +1,10 @@
-import { useState } from 'react';
-import { TextField } from '@mui/material';
-import { formatNumberValue, parseNumberValue } from '../utils/InputUtils.js';
+import { useState } from "react";
+import { TextField } from "@mui/material";
+import {
+  formatNumberValue,
+  isIntegerText,
+  parseNumberValue,
+} from "../utils/InputUtils.js";
 
 export default function NumInput({ value, onChange, ...props }) {
   const [localValue, setLocalValue] = useState(formatNumberValue(value));
@@ -12,7 +16,7 @@ export default function NumInput({ value, onChange, ...props }) {
       fullWidth
       value={localValue}
       onChange={(e) => {
-        if (/^\d*$/.test(e.target.value)) setLocalValue(e.target.value);
+        if (isIntegerText(e.target.value)) setLocalValue(e.target.value);
       }}
       onBlur={(e) => onChange(e, parseNumberValue(localValue))}
     />

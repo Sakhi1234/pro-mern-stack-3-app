@@ -14,6 +14,7 @@ router.get('/about', async (_req, res, next) => {
 });
 
 router.get('/user', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json({ user: req.user || { signedIn: false } });
 });
 
