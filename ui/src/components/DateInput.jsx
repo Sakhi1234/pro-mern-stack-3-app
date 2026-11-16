@@ -11,6 +11,7 @@ export default function DateInput({
   value,
   onChange,
   onValidityChange,
+  onFocus,
   ...props
 }) {
   const [localValue, setLocalValue] = useState(formatDateForInput(value));
@@ -37,9 +38,10 @@ export default function DateInput({
       value={displayValue}
       placeholder={focused ? "yyyy-mm-dd" : ""}
       error={!valid}
-      onFocus={() => {
+      onFocus={(event) => {
         setLocalValue(formatDateForInput(value));
         setFocused(true);
+        onFocus?.(event);
       }}
       onBlur={handleBlur}
       onChange={(e) => {

@@ -1,50 +1,29 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { CssBaseline, GlobalStyles } from "@mui/material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import AppProviders from "./AppProviders.jsx";
+import createEmotionCache from "./createEmotionCache.js";
+import reviveDates from "./utils/reviveDates.js";
 import App from "./App.jsx";
 import "./index.css";
 
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    primary: { main: "#0f766e" },
-    secondary: { main: "#f59e0b" },
-    background: { default: "#f6f8fb", paper: "#ffffff" },
-  },
-  shape: { borderRadius: 14 },
-  typography: {
-    fontFamily: [
-      "Manrope",
-      "Inter",
-      "Segoe UI",
-      "Roboto",
-      "Arial",
-      "sans-serif",
-    ].join(","),
-    h6: { fontWeight: 700, letterSpacing: -0.2 },
-  },
-});
-
-createRoot(document.getElementById("root")).render(
+const dataElement = document.getElementById("initial-data");
+const initialData = dataElement
+  ? reviveDates(JSON.parse(dataElement.textContent))
+  : null;
+const root = document.getElementById("root");
+const element = (
   <StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <GlobalStyles
-        styles={{
-          ":root": {
-            colorScheme: "light",
-          },
-          body: {
-            background:
-              "radial-gradient(circle at 5% 0%, #e6fffa 0, rgba(230,255,250,0) 35%), radial-gradient(circle at 95% 0%, #fff7ed 0, rgba(255,247,237,0) 30%), #f6f8fb",
-          },
-        }}
-      />
+    <AppProviders cache={createEmotionCache()}>
       <BrowserRouter>
-        <App />
+        <App initialData={initialData} />
       </BrowserRouter>
-    </ThemeProvider>
-  </StrictMode>,
+    </AppProviders>
+  </StrictMode>
 );
+
+if (initialData) {
+  hydrateRoot(root, element);
+} else {
+  createRoot(root).render(element);
+}

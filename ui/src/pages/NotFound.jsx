@@ -13,3 +13,5 @@ export default function NotFound() {
     </Paper>
   );
 }
+
+NotFound.fetchData = async () => ({ status: 404 });

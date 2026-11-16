@@ -5,7 +5,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import UserContext from "../context/UserContext.js";
-import { formatDateForDisplay } from "../utils/DateUtils.js";
+import { formatIssueDateForDisplay } from "../utils/DateUtils.js";
+import useTimeZone from "../hooks/useTimeZone.js";
 
 function statusColor(status) {
   if (status === "New") return "default";
@@ -16,6 +17,7 @@ function statusColor(status) {
 }
 
 export default function IssueRow({ issue, index, closeIssue, deleteIssue }) {
+  const timeZone = useTimeZone();
   const user = useContext(UserContext);
   const disabled = !user.signedIn;
   const location = useLocation();
@@ -44,9 +46,9 @@ export default function IssueRow({ issue, index, closeIssue, deleteIssue }) {
         ) : null}
       </TableCell>
       <TableCell>{issue.owner}</TableCell>
-      <TableCell>{formatDateForDisplay(issue.created)}</TableCell>
+      <TableCell>{formatIssueDateForDisplay(issue.created, timeZone)}</TableCell>
       <TableCell>{issue.effort}</TableCell>
-      <TableCell>{formatDateForDisplay(issue.due)}</TableCell>
+      <TableCell>{formatIssueDateForDisplay(issue.due)}</TableCell>
       <TableCell>{issue.title}</TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <Tooltip title="Edit Issue">

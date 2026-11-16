@@ -58,6 +58,7 @@ function Search() {
     <>
       <div style={{ minWidth: 260 }}>
         <AsyncSelect
+          instanceId="issue-search"
           cacheOptions
           defaultOptions={[]}
           isClearable={false}

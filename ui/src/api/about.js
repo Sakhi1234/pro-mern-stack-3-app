@@ -1,5 +1,5 @@
-import { apiFetch } from '../utils/restFetch.js';
+import { apiFetch } from "../utils/restFetch.js";
 
-export function fetchAbout(showError) {
-  return apiFetch('/about', { method: 'GET' }, showError);
+export function fetchAbout(showError, requestOptions = {}) {
+  return apiFetch("/about", { method: "GET", ...requestOptions }, showError);
 }

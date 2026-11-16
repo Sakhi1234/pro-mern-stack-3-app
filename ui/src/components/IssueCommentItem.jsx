@@ -14,6 +14,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import { deleteIssueComment, updateIssueComment } from "../api/comments.js";
 import { formatDateTimeForDisplay } from "../utils/DateUtils.js";
+import useTimeZone from "../hooks/useTimeZone.js";
 
 function canManageComment(comment, currentUser) {
   if (!currentUser?.signedIn) return false;
@@ -33,6 +34,7 @@ export default function IssueCommentItem({
   showError = () => {},
   showSuccess = () => {},
 }) {
+  const timeZone = useTimeZone();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.text || "");
   const [saving, setSaving] = useState(false);
@@ -98,7 +100,7 @@ export default function IssueCommentItem({
               {comment.authorName || comment.authorEmail || "Anonymous"}
             </Typography>
             <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
-              {formatDateTimeForDisplay(comment.created)}
+              {formatDateTimeForDisplay(comment.created, timeZone)}
               {updatedAt ? " • edited" : ""}
             </Typography>
           </Box>

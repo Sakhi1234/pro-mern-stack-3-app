@@ -78,7 +78,7 @@ function IssueDetailContent({ issue, showError, showSuccess }) {
           flexWrap: "wrap",
         }}
       >
-        <Box>
+        <Box sx={{ flex: "1 1 280px", minWidth: 0 }}>
           <Typography
             variant="overline"
             sx={{ letterSpacing: 1.4, color: "text.secondary" }}
@@ -87,6 +87,13 @@ function IssueDetailContent({ issue, showError, showSuccess }) {
           </Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
             {`#${issue.id}`}
+          </Typography>
+          <Typography
+            component="h1"
+            variant="h4"
+            sx={{ mt: 1, fontWeight: 700, overflowWrap: "anywhere" }}
+          >
+            {issue.title}
           </Typography>
         </Box>
         <Button variant="outlined" onClick={() => navigate("/issues")}>

@@ -1,15 +1,20 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import { fetchAbout } from "../api/about.js";
+import InitialDataContext from "../context/InitialDataContext.js";
 
 export default function About() {
-  const [apiAbout, setApiAbout] = useState(null);
+  const initialData = useContext(InitialDataContext);
+  const [apiAbout, setApiAbout] = useState(initialData?.about ?? null);
 
   useEffect(() => {
-    fetchAbout().then((data) => {
-      setApiAbout(data?.about || "");
+    if (apiAbout != null) return undefined;
+    const controller = new AbortController();
+    fetchAbout(null, { signal: controller.signal }).then((data) => {
+      if (data) setApiAbout(data.about || "");
     });
-  }, []);
+    return () => controller.abort();
+  }, [apiAbout]);
 
   return (
     <Paper
@@ -37,3 +42,11 @@ export default function About() {
     </Paper>
   );
 }
+
+About.fetchData = async ({ get }) => {
+  const data = await get("/api/about");
+  if (typeof data.about !== "string") {
+    throw new Error("Invalid SSR API response");
+  }
+  return { about: data.about };
+};

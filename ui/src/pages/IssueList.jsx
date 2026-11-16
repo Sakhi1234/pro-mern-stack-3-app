@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -6,6 +6,7 @@ import {
   Paper,
   Pagination,
   Typography,
+  Tooltip,
 } from "@mui/material";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import IssueFilter from "../components/IssueFilter.jsx";
@@ -15,10 +16,13 @@ import {
   closeIssueRequest,
   deleteIssueRequest,
   fetchIssueListPage,
+  getIssueListParams,
   restoreIssueRequest,
 } from "../api/issues.js";
 import withToast from "../utils/withToast.jsx";
 import UserContext from "../context/UserContext.js";
+import InitialDataContext from "../context/InitialDataContext.js";
+import { loadIssue } from "../utils/ssrApi.js";
 
 const SECTION_SIZE = 5;
 
@@ -27,23 +31,52 @@ function IssueList({ showError, showSuccess }) {
   const navigate = useNavigate();
   const paramsRoute = useParams();
   const user = useContext(UserContext);
+  const initialData = useContext(InitialDataContext);
+  const routeKey = `${location.pathname}${location.search}`;
+  const bootstrap = initialData?.route === routeKey ? initialData : null;
+  const initialRoute = useRef(bootstrap ? routeKey : null);
   const isIssueDetailRoute = paramsRoute.id != null;
-  const [issues, setIssues] = useState(null);
-  const [selectedIssue, setSelectedIssue] = useState(null);
-  const [pages, setPages] = useState(1);
-
-  function applyIssueListData(data) {
-    setIssues(data.issueList.issues);
-    setSelectedIssue(data.issue || null);
-    setPages(data.issueList.pages || 1);
-  }
-
-  const loadData = useCallback(async () => {
-    const data = await fetchIssueListPage(location.search, paramsRoute.id, showError);
-    if (data) applyIssueListData(data);
-  }, [location.search, paramsRoute.id, showError]);
+  const [issues, setIssues] = useState(bootstrap?.issueList?.issues ?? null);
+  const [selectedIssue, setSelectedIssue] = useState(bootstrap?.issue ?? null);
+  const [pages, setPages] = useState(bootstrap?.issueList?.pages || 1);
+  const [loadedRoute, setLoadedRoute] = useState(bootstrap ? routeKey : null);
 
   useEffect(() => {
+    const createdIssueId = location.state?.createdIssueId;
+    if (createdIssueId !== Number(paramsRoute.id)) return;
+
+    showSuccess(`Issue #${createdIssueId} created successfully.`);
+    // Consume the confirmation so refresh and browser Back do not replay it.
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: null,
+    });
+  }, [location, navigate, paramsRoute.id, showSuccess]);
+
+  const applyIssueListData = useCallback(
+    (data) => {
+      setIssues(data.issueList.issues);
+      setSelectedIssue(data.issue || null);
+      setPages(data.issueList.pages || 1);
+      setLoadedRoute(routeKey);
+    },
+    [routeKey],
+  );
+
+  const loadData = useCallback(async () => {
+    const data = await fetchIssueListPage(
+      location.search,
+      paramsRoute.id,
+      showError,
+    );
+    if (data) applyIssueListData(data);
+  }, [location.search, paramsRoute.id, showError, applyIssueListData]);
+
+  useEffect(() => {
+    // Keep skipping the initial request through StrictMode's effect replay.
+    // Once the URL changes, always fetch afresh (including browser Back).
+    if (initialRoute.current === routeKey) return undefined;
+    initialRoute.current = null;
     const abortController = new AbortController();
 
     async function loadIssueList() {
@@ -61,7 +94,13 @@ function IssueList({ showError, showSuccess }) {
     return () => {
       abortController.abort();
     };
-  }, [location.search, paramsRoute.id, showError]);
+  }, [
+    routeKey,
+    location.search,
+    paramsRoute.id,
+    showError,
+    applyIssueListData,
+  ]);
 
   async function closeIssue(index) {
     const data = await closeIssueRequest(issues[index].id, showError);
@@ -107,7 +146,7 @@ function IssueList({ showError, showSuccess }) {
     );
   }
 
-  if (issues == null) {
+  if (issues == null || (isIssueDetailRoute && loadedRoute !== routeKey)) {
     return (
       <Box
         sx={{
@@ -119,6 +158,12 @@ function IssueList({ showError, showSuccess }) {
       >
         <CircularProgress size={34} />
       </Box>
+    );
+  }
+
+  if (isIssueDetailRoute && !selectedIssue) {
+    return (
+      <Typography variant="h6">{`Issue with ID ${paramsRoute.id} not found.`}</Typography>
     );
   }
 
@@ -161,22 +206,33 @@ function IssueList({ showError, showSuccess }) {
                   discussion in one place.
                 </Typography>
               </Box>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={() => navigate("/create")}
-                disabled={!user.signedIn}
-                sx={{
-                  textTransform: "none",
-                  borderRadius: 2.5,
-                  px: 2.4,
-                  fontWeight: 700,
-                  boxShadow: "0 10px 24px rgba(245, 158, 11, 0.28)",
-                  whiteSpace: "nowrap",
-                }}
+              <Tooltip
+                title={
+                  user.signedIn
+                    ? "Create a new issue"
+                    : "Sign in to create an issue"
+                }
+                arrow
               >
-                Create Issue
-              </Button>
+                <span>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => navigate("/create")}
+                    disabled={!user.signedIn}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2.5,
+                      px: 2.4,
+                      fontWeight: 700,
+                      boxShadow: "0 10px 24px rgba(245, 158, 11, 0.28)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Create Issue
+                  </Button>
+                </span>
+              </Tooltip>
             </Box>
           </Paper>
           <Paper
@@ -232,4 +288,27 @@ function IssueList({ showError, showSuccess }) {
   );
 }
 
-export default withToast(IssueList);
+IssueList.fetchData = async ({ get, url, params }) => {
+  if (params.id != null) {
+    return {
+      ...(await loadIssue(get, params.id)),
+      // The detail view does not display or fetch the issue list.
+      issueList: { issues: [], pages: 0 },
+    };
+  }
+
+  const query = new URLSearchParams(getIssueListParams(url.search));
+  const data = await get(`/api/issues?${query}`);
+  if (
+    !Array.isArray(data.issueList?.issues) ||
+    !Number.isInteger(data.issueList.pages) ||
+    data.issueList.pages < 0
+  ) {
+    throw new Error("Invalid SSR API response");
+  }
+  return { issueList: data.issueList, issue: null };
+};
+
+const IssueListWithToast = withToast(IssueList);
+IssueListWithToast.fetchData = IssueList.fetchData;
+export default IssueListWithToast;

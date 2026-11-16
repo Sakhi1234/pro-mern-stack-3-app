@@ -1,5 +1,5 @@
-import { useContext, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -11,15 +11,30 @@ import {
   Typography,
 } from "@mui/material";
 import { createIssue, fetchIssue, updateIssue } from "../api/issues.js";
-import { daysFromNow, formatDateForDisplay } from "../utils/DateUtils.js";
+import { addCalendarDays, formatDateForDisplay } from "../utils/DateUtils.js";
 import NumInput from "../components/NumInput.jsx";
 import DateInput from "../components/DateInput.jsx";
 import TextInput from "../components/TextInput.jsx";
 import IssueComments from "../components/IssueComments.jsx";
 import withToast from "../utils/withToast.jsx";
 import UserContext from "../context/UserContext.js";
+import InitialDataContext from "../context/InitialDataContext.js";
+import { loadIssue } from "../utils/ssrApi.js";
+import useTimeZone from "../hooks/useTimeZone.js";
 
 const VALID_STATUSES = ["New", "Assigned", "Fixed", "Closed"];
+
+function createDraftIssue(now = new Date()) {
+  return {
+    status: "New",
+    owner: "",
+    effort: null,
+    due: addCalendarDays(now, 10),
+    title: "",
+    description: "",
+    created: now,
+  };
+}
 
 function normalizeStatus(value) {
   if (typeof value === "string" && VALID_STATUSES.includes(value)) return value;
@@ -43,41 +58,50 @@ function IssueEdit({ showSuccess, showError }) {
   );
 }
 
-function createDraftIssue() {
-  return {
-    status: "New",
-    owner: "",
-    effort: null,
-    due: daysFromNow(10),
-    title: "",
-    description: "",
-    created: new Date(),
-  };
-}
-
 function IssueEditContent({ routeId, showSuccess, showError }) {
+  const timeZone = useTimeZone();
   const navigate = useNavigate();
   const user = useContext(UserContext);
+  const location = useLocation();
+  const initialData = useContext(InitialDataContext);
+  const routeKey = `${location.pathname}${location.search}`;
+  const bootstrap = initialData?.route === routeKey ? initialData : null;
+  const initialRoute = useRef(bootstrap ? routeKey : null);
   const isCreateMode = routeId == null;
-  const [issue, setIssue] = useState(() => (isCreateMode ? createDraftIssue() : null));
+  const [issue, setIssue] = useState(() =>
+    bootstrap
+      ? normalizeIssue(
+          isCreateMode ? bootstrap.draftIssue : (bootstrap.issue ?? {}),
+        )
+      : isCreateMode
+        ? createDraftIssue()
+        : null,
+  );
+  const [dueTouched, setDueTouched] = useState(false);
+  // Match the serialized UTC draft during hydration, then localize only the
+  // untouched default. The displayed date is also the date we submit.
+  const due =
+    isCreateMode && !dueTouched
+      ? addCalendarDays(issue.created, 10, timeZone)
+      : issue?.due;
   const [invalidFields, setInvalidFields] = useState({});
   const [showingValidation, setShowingValidation] = useState(false);
-  const [loading, setLoading] = useState(!isCreateMode);
+  const [loading, setLoading] = useState(!isCreateMode && !bootstrap);
 
   useEffect(() => {
     if (isCreateMode) return undefined;
+    if (initialRoute.current === routeKey) return undefined;
+    initialRoute.current = null;
 
     const abortController = new AbortController();
 
     async function loadData() {
-      const data = await fetchIssue(
-        routeId,
-        showError,
-        { signal: abortController.signal },
-      );
+      const data = await fetchIssue(routeId, showError, {
+        signal: abortController.signal,
+      });
       if (!data) return;
 
-      setIssue(normalizeIssue(data.issue));
+      setIssue(normalizeIssue(data.issue) || {});
       setInvalidFields({});
       setLoading(false);
     }
@@ -87,10 +111,11 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
     return () => {
       abortController.abort();
     };
-  }, [isCreateMode, routeId, showError]);
+  }, [isCreateMode, routeKey, routeId, showError]);
 
   function onChange(event, naturalValue) {
     const { name, value } = event.target;
+    if (name === "due") setDueTouched(true);
     const isMuiSelectChild =
       naturalValue &&
       typeof naturalValue === "object" &&
@@ -118,7 +143,7 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
       status: normalizeStatus(issue.status),
       owner: issue.owner,
       effort: issue.effort,
-      due: issue.due,
+      due,
       title: issue.title,
       description: issue.description,
     };
@@ -128,13 +153,15 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
         owner: issue.owner,
         effort: issue.effort,
         title: issue.title,
-        due: issue.due,
+        due,
         description: issue.description,
       };
       createIssue(createPayload, showError).then((data) => {
         if (data?.issueAdd?.id) {
-          showSuccess("Created issue successfully");
-          navigate(`/edit/${data.issueAdd.id}`);
+          navigate(`/issues/${data.issueAdd.id}`, {
+            replace: true,
+            state: { createdIssueId: data.issueAdd.id },
+          });
         }
       });
       return;
@@ -187,7 +214,7 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
         <TextField
           label="Created"
           size="small"
-          value={formatDateForDisplay(issue.created)}
+          value={formatDateForDisplay(issue.created, timeZone)}
           disabled
         />
         <TextField
@@ -218,10 +245,16 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
           onChange={onChange}
         />
         <DateInput
-          key={`due:${issue.id || "new"}:${issue.due || ""}`}
+          key={`due:${issue.id || "new"}`}
           label="Due"
           name="due"
-          value={issue.due}
+          value={due}
+          onFocus={() => {
+            if (isCreateMode && !dueTouched) {
+              setIssue((prev) => ({ ...prev, due }));
+              setDueTouched(true);
+            }
+          }}
           onChange={onChange}
           onValidityChange={onValidityChange}
         />
@@ -273,4 +306,11 @@ function IssueEditContent({ routeId, showSuccess, showError }) {
   );
 }
 
-export default withToast(IssueEdit);
+IssueEdit.fetchData = async ({ get, params }) => {
+  if (params.id == null) return { draftIssue: createDraftIssue() };
+  return loadIssue(get, params.id);
+};
+
+const IssueEditWithToast = withToast(IssueEdit);
+IssueEditWithToast.fetchData = IssueEdit.fetchData;
+export default IssueEditWithToast;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import {
   Paper,
   Table,
@@ -12,23 +12,28 @@ import {
 import { useLocation } from "react-router-dom";
 import IssueFilter from "../components/IssueFilter.jsx";
 import withToast from "../utils/withToast.jsx";
-import { fetchIssueReport } from "../api/reports.js";
+import { fetchIssueReport, getReportParams } from "../api/reports.js";
+import InitialDataContext from "../context/InitialDataContext.js";
 
 const statuses = ["New", "Assigned", "Fixed", "Closed"];
 
 function IssueReport({ showError }) {
   const location = useLocation();
-  const [stats, setStats] = useState(null);
+  const initialData = useContext(InitialDataContext);
+  const routeKey = `${location.pathname}${location.search}`;
+  const bootstrap = initialData?.route === routeKey ? initialData : null;
+  const initialRoute = useRef(bootstrap ? routeKey : null);
+  const [stats, setStats] = useState(bootstrap?.issueCounts ?? null);
 
   useEffect(() => {
+    if (initialRoute.current === routeKey) return undefined;
+    initialRoute.current = null;
     const abortController = new AbortController();
 
     async function loadReportData() {
-      const issueCounts = await fetchIssueReport(
-        location.search,
-        showError,
-        { signal: abortController.signal },
-      );
+      const issueCounts = await fetchIssueReport(location.search, showError, {
+        signal: abortController.signal,
+      });
       if (issueCounts) setStats(issueCounts);
     }
 
@@ -37,7 +42,7 @@ function IssueReport({ showError }) {
     return () => {
       abortController.abort();
     };
-  }, [location.search, showError]);
+  }, [routeKey, location.search, showError]);
 
   if (stats == null) return null;
 
@@ -94,4 +99,15 @@ function IssueReport({ showError }) {
   );
 }
 
-export default withToast(IssueReport);
+IssueReport.fetchData = async ({ get, url }) => {
+  const query = new URLSearchParams(getReportParams(url.search));
+  const data = await get(`/api/issue-counts?${query}`);
+  if (!Array.isArray(data.issueCounts)) {
+    throw new Error("Invalid SSR API response");
+  }
+  return { issueCounts: data.issueCounts };
+};
+
+const IssueReportWithToast = withToast(IssueReport);
+IssueReportWithToast.fetchData = IssueReport.fetchData;
+export default IssueReportWithToast;

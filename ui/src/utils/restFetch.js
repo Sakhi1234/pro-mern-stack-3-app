@@ -1,10 +1,5 @@
 import axios from "axios";
-
-const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T/;
-
-function isIsoDateTimeString(value) {
-  return typeof value === "string" && ISO_DATE_TIME_PATTERN.test(value);
-}
+import reviveDates from "./reviveDates.js";
 
 function toQuery(params) {
   const search = new URLSearchParams();
@@ -14,22 +9,6 @@ function toQuery(params) {
   });
   const queryString = search.toString();
   return queryString ? `?${queryString}` : "";
-}
-
-function reviveDates(value) {
-  if (Array.isArray(value)) return value.map(reviveDates);
-  if (value && typeof value === "object") {
-    const revivedValue = {};
-    Object.entries(value).forEach(([key, nestedValue]) => {
-      revivedValue[key] = reviveDates(nestedValue);
-    });
-    return revivedValue;
-  }
-  if (isIsoDateTimeString(value)) {
-    const parsedDate = new Date(value);
-    return Number.isNaN(parsedDate.getTime()) ? value : parsedDate;
-  }
-  return value;
 }
 
 export async function apiFetch(path, options = {}, showError = null) {

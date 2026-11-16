@@ -4,6 +4,7 @@ import IssueEdit from "../pages/IssueEdit.jsx";
 import About from "../pages/About.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
+// Shared by the browser router and the Vite-processed SSR entry.
 const routes = [
   { path: "/", redirectTo: "/issues", replace: true },
   { path: "/issues", component: IssueList },

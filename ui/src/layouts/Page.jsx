@@ -19,11 +19,12 @@ import Search from "../components/Search.jsx";
 import UserContext from "../context/UserContext.js";
 import { fetchCurrentUser } from "../api/auth.js";
 
-export default function Page() {
-  const [user, setUser] = useState(null);
+export default function Page({ initialUser }) {
+  const [user, setUser] = useState(initialUser ?? null);
   const [menuAnchor, setMenuAnchor] = useState(null);
 
   useEffect(() => {
+    if (initialUser != null) return undefined;
     const abortController = new AbortController();
 
     async function loadCurrentUser() {
@@ -48,7 +49,7 @@ export default function Page() {
     return () => {
       abortController.abort();
     };
-  }, []);
+  }, [initialUser]);
 
   if (user == null) return null;
 
@@ -120,3 +121,13 @@ export default function Page() {
     </Box>
   );
 }
+
+Page.fetchData = async ({ get }) => {
+  const data = await get("/api/user");
+  if (typeof data.user?.signedIn !== "boolean") {
+    throw new Error("Invalid SSR API response");
+  }
+  // Whitelist only public UI fields; never serialize authentication tokens.
+  const { signedIn, givenName = "", name = "", email = "" } = data.user;
+  return { signedIn, givenName, name, email };
+};
